@@ -105,7 +105,7 @@ func getCredentials(hidePassword bool) (User, error) {
 	return User{username: username, password: password}, nil
 }
 
-func generatePasswd(passwordFile string, policy strength.PasswordPolicy, hidePassword bool) error {
+func generatePasswd(passwordFile string, policy *strength.PasswordPolicy, hidePassword bool) error {
 	file, err := os.Create(passwordFile)
 	if err != nil {
 		return err
@@ -124,12 +124,12 @@ func generatePasswd(passwordFile string, policy strength.PasswordPolicy, hidePas
 		passwordKeyChan := make(chan []byte)
 		errorChan := make(chan error)
 		go func(user User) {
-			passwordKey, err := bcrypt.GenerateFromPassword(preHash(user).password, bcryptCost)
+			passwordKey, err := bcrypt.GenerateFromPassword(preHash(user.password), bcryptCost)
 			passwordKeyChan <- passwordKey
 			errorChan <- err
 		}(user)
-		policy.TempPolices = append(policy.TempPolices, &strength.ProhibitedPasswordsPolicy{ProhibitedPasswords: map[string]bool{user.username: true}})
-		err = policy.Check(string(user.password))
+		(*policy).TempPolices = append((*policy).TempPolices, &strength.ProhibitedPasswordsPolicy{ProhibitedPasswords: map[string]bool{user.username: true}})
+		err = (*policy).Check(string(user.password))
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -161,33 +161,31 @@ func generatePasswd(passwordFile string, policy strength.PasswordPolicy, hidePas
 	return nil
 }
 
-func preHash(user User) User {
+func preHash(password []byte) []byte {
 	hashedPassword := hmac.New(sha256.New, []byte(os.Getenv("PEPPER_KEY")))
-	hashedPassword.Write(user.password)
-	user.password = []byte(base64.StdEncoding.EncodeToString(hashedPassword.Sum(nil)))
-	return user
+	hashedPassword.Write(password)
+	return []byte(base64.StdEncoding.EncodeToString(hashedPassword.Sum(nil)))
 }
 
 func checkPassword(user User, users map[string]UserRecord) (UserRecord, bool) {
 	if record, ok := users[user.username]; ok {
-		if bcrypt.CompareHashAndPassword([]byte(record.passwordKey), preHash(user).password) == nil {
+		if bcrypt.CompareHashAndPassword([]byte(record.passwordKey), preHash(user.password)) == nil {
 			return record, true
 		}
 	}
 	return UserRecord{}, false
 }
 
-func main() {
-	hidePassword := os.Getenv("HIDE_PASSWORD") == "y"
+func getPasswordPolicy() *strength.PasswordPolicy {
 	prohibitedPasswords, err := strength.GetProhibitedPasswords("sensitive_files/prohibited_passwords")
 	if err != nil {
-		return
+		return nil
 	}
 	prohibitedRegexes, err := strength.GetProhibitedRegexes("sensitive_files/prohibited_regexes")
 	if err != nil {
-		return
+		return nil
 	}
-	var passwordPolicy = strength.PasswordPolicy{SubPolices: []strength.SubPolicy{
+	return &strength.PasswordPolicy{SubPolices: []strength.SubPolicy{
 		&strength.LengthPolicy{MinLength: 8, MaxLength: 12},
 		&strength.CasePolicy{MinLower: 1, MinUpper: 1},
 		&strength.NumberPolicy{MinNumbers: 1},
@@ -195,7 +193,12 @@ func main() {
 		prohibitedPasswords,
 		prohibitedRegexes,
 	}}
-	err = generatePasswd("sensitive_files/passwd", passwordPolicy, hidePassword)
+}
+
+func main() {
+	hidePassword := os.Getenv("HIDE_PASSWORD") == "y"
+	passwordPolicy := getPasswordPolicy()
+	err := generatePasswd("sensitive_files/passwd", passwordPolicy, hidePassword)
 	if err != nil {
 		return
 	}
@@ -222,7 +225,6 @@ func main() {
 		fmt.Println("Bad username or password")
 		return
 	}
-
 	if patients, ok := patientsMap[record.userId]; ok {
 		fmt.Printf("User permissions:\n role: %s\n patient IDs: %s\n", record.role, patients)
 	} else {
