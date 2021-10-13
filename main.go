@@ -196,11 +196,13 @@ func getPasswordPolicy() *strength.PasswordPolicy {
 }
 
 func main() {
-	hidePassword := os.Getenv("HIDE_PASSWORD") == "y"
+	hidePassword := os.Getenv("HIDE_PASSWORD") != "n"
 	passwordPolicy := getPasswordPolicy()
-	err := generatePasswd("sensitive_files/passwd", passwordPolicy, hidePassword)
-	if err != nil {
-		return
+	if os.Getenv("GENERATE_PASSWD") == "y" {
+		err := generatePasswd("sensitive_files/passwd", passwordPolicy, hidePassword)
+		if err != nil {
+			return
+		}
 	}
 	users, err := getUsers("sensitive_files/passwd")
 	if err != nil {
