@@ -14,7 +14,7 @@ import (
 	"strconv"
 )
 
-const bcryptCost = 20
+const bcryptCost = 15
 
 type UserRecord struct {
 	username    string
@@ -84,7 +84,7 @@ func getPatients(patientsFile string) (map[string][]string, error) {
 	return output, nil
 }
 
-func getCredentials() (User, error) {
+func getCredentials(hidePassword bool) (User, error) {
 	var username string
 	var password []byte
 	fmt.Print("Enter username: ")
@@ -93,7 +93,11 @@ func getCredentials() (User, error) {
 		return User{}, err
 	}
 	fmt.Print("Enter password: ")
-	password, err = term.ReadPassword(int(os.Stdin.Fd()))
+	if hidePassword {
+		password, err = term.ReadPassword(int(os.Stdin.Fd()))
+	} else {
+		_, err = fmt.Scanln(&password)
+	}
 	if err != nil {
 		return User{}, err
 	}
@@ -101,7 +105,7 @@ func getCredentials() (User, error) {
 	return User{username: username, password: password}, nil
 }
 
-func generatePasswd(passwordFile string, policy strength.PasswordPolicy) error {
+func generatePasswd(passwordFile string, policy strength.PasswordPolicy, hidePassword bool) error {
 	file, err := os.Create(passwordFile)
 	if err != nil {
 		return err
@@ -113,7 +117,7 @@ func generatePasswd(passwordFile string, policy strength.PasswordPolicy) error {
 	c := true
 	i := 0
 	for c {
-		user, err := getCredentials()
+		user, err := getCredentials(hidePassword)
 		if err != nil {
 			return err
 		}
@@ -124,7 +128,7 @@ func generatePasswd(passwordFile string, policy strength.PasswordPolicy) error {
 			passwordKeyChan <- passwordKey
 			errorChan <- err
 		}(user)
-		policy.TempPolices = []strength.SubPolicy{&strength.ProhibitedPasswordsPolicy{ProhibitedPasswords: map[string]bool{user.username: true}}}
+		policy.TempPolices = append(policy.TempPolices, &strength.ProhibitedPasswordsPolicy{ProhibitedPasswords: map[string]bool{user.username: true}})
 		err = policy.Check(string(user.password))
 		if err != nil {
 			fmt.Println(err)
@@ -137,6 +141,8 @@ func generatePasswd(passwordFile string, policy strength.PasswordPolicy) error {
 		}
 		passwordKey := <-passwordKeyChan
 		err = <-errorChan
+		close(passwordKeyChan)
+		close(errorChan)
 		if err != nil {
 			return err
 		}
@@ -156,7 +162,7 @@ func generatePasswd(passwordFile string, policy strength.PasswordPolicy) error {
 }
 
 func preHash(user User) User {
-	hashedPassword := hmac.New(sha256.New, []byte("secret"))
+	hashedPassword := hmac.New(sha256.New, []byte(os.Getenv("PEPPER_KEY")))
 	hashedPassword.Write(user.password)
 	user.password = []byte(base64.StdEncoding.EncodeToString(hashedPassword.Sum(nil)))
 	return user
@@ -172,6 +178,7 @@ func checkPassword(user User, users map[string]UserRecord) (UserRecord, bool) {
 }
 
 func main() {
+	hidePassword := os.Getenv("HIDE_PASSWORD") == "y"
 	prohibitedPasswords, err := strength.GetProhibitedPasswords("sensitive_files/prohibited_passwords")
 	if err != nil {
 		return
@@ -188,7 +195,7 @@ func main() {
 		prohibitedPasswords,
 		prohibitedRegexes,
 	}}
-	err = generatePasswd("sensitive_files/passwd", passwordPolicy)
+	err = generatePasswd("sensitive_files/passwd", passwordPolicy, hidePassword)
 	if err != nil {
 		return
 	}
@@ -204,7 +211,7 @@ func main() {
 	fmt.Print("\n\nMedView Imaging\n" +
 		"Medical Information Management System\n" +
 		"-----------------------------------------------------\n")
-	user, err := getCredentials()
+	user, err := getCredentials(hidePassword)
 	if err != nil {
 		return
 	}

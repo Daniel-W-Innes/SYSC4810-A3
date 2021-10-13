@@ -170,18 +170,11 @@ func (policy *ProhibitedRegexesPolicy) check(s string) error {
 	return nil
 }
 func runSubPolices(polices *[]SubPolicy, s string) error {
-	errorsChan := make(chan error)
 	for _, subPolices := range *polices {
-		go func(subPolices SubPolicy, s string) {
-			err := subPolices.check(s)
-			if err != nil {
-				errorsChan <- err
-			}
-		}(subPolices, s)
-	}
-	err := <-errorsChan
-	if err != nil {
-		return err
+		err := subPolices.check(s)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
