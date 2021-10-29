@@ -204,30 +204,37 @@ func main() {
 			return
 		}
 	}
-	users, err := getUsers("sensitive_files/passwd")
-	if err != nil {
-		return
-	}
-	patientsMap, err := getPatients("sensitive_files/patients")
-	if err != nil {
-		return
-	}
+
+	usersChan := make(chan map[string]UserRecord)
+	patientsMapChan := make(chan map[string][]string)
+	go func() {
+		users, err := getUsers("sensitive_files/passwd")
+		if err != nil {
+			log.Panic("failed to open passwd")
+		}
+		usersChan <- users
+		patientsMap, err := getPatients("sensitive_files/patients")
+		if err != nil {
+			log.Panic("failed to open patients")
+		}
+		patientsMapChan <- patientsMap
+	}()
 
 	fmt.Print("\n\nMedView Imaging\n" +
 		"Medical Information Management System\n" +
 		"-----------------------------------------------------\n")
 	user, err := getCredentials(hidePassword)
 	if err != nil {
-		return
+		log.Panic("failed get credentials")
 	}
-	record, ok := checkPassword(user, users)
+	record, ok := checkPassword(user, <-usersChan)
 	if ok {
 		fmt.Println("ACCESS GRANTED")
 	} else {
 		fmt.Println("Bad username or password")
 		return
 	}
-	if patients, ok := patientsMap[record.userId]; ok {
+	if patients, ok := (<-patientsMapChan)[record.userId]; ok {
 		fmt.Printf("User permissions:\n role: %s\n patient IDs: %s\n", record.role, patients)
 	} else {
 		fmt.Printf("User permissions:\n role: %s\n", record.role)
