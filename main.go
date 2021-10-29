@@ -15,6 +15,7 @@ import (
 )
 
 const bcryptCost = 15
+const bassPath = "/sensitive_files"
 
 type UserRecord struct {
 	username    string
@@ -177,11 +178,11 @@ func checkPassword(user User, users map[string]UserRecord) (UserRecord, bool) {
 }
 
 func getPasswordPolicy() *strength.PasswordPolicy {
-	prohibitedPasswords, err := strength.GetProhibitedPasswords("sensitive_files/prohibited_passwords")
+	prohibitedPasswords, err := strength.GetProhibitedPasswords(bassPath + "/prohibited_passwords")
 	if err != nil {
 		return nil
 	}
-	prohibitedRegexes, err := strength.GetProhibitedRegexes("sensitive_files/prohibited_regexes")
+	prohibitedRegexes, err := strength.GetProhibitedRegexes(bassPath + "/prohibited_regexes")
 	if err != nil {
 		return nil
 	}
@@ -199,7 +200,7 @@ func main() {
 	hidePassword := os.Getenv("HIDE_PASSWORD") != "n"
 	passwordPolicy := getPasswordPolicy()
 	if os.Getenv("GENERATE_PASSWD") == "y" {
-		err := generatePasswd("sensitive_files/passwd", passwordPolicy, hidePassword)
+		err := generatePasswd(bassPath+"/passwd", passwordPolicy, hidePassword)
 		if err != nil {
 			return
 		}
@@ -208,14 +209,14 @@ func main() {
 	usersChan := make(chan map[string]UserRecord)
 	patientsMapChan := make(chan map[string][]string)
 	go func() {
-		users, err := getUsers("sensitive_files/passwd")
+		users, err := getUsers(bassPath + "/passwd")
 		if err != nil {
-			log.Panic("failed to open passwd")
+			log.Panic("failed to open passwd: " + err.Error())
 		}
 		usersChan <- users
-		patientsMap, err := getPatients("sensitive_files/patients")
+		patientsMap, err := getPatients(bassPath + "/patients")
 		if err != nil {
-			log.Panic("failed to open patients")
+			log.Panic("failed to open patients: " + err.Error())
 		}
 		patientsMapChan <- patientsMap
 	}()
