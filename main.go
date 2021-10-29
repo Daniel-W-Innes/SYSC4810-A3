@@ -29,7 +29,7 @@ type User struct {
 	password []byte
 }
 
-//arrayToUsers Create a user structs from the nested arrays extracted from the passwd file.
+//arrayToUsers Create a user structs mapped by username from the nested arrays extracted from the passwd file.
 func arrayToUsers(records [][]string) map[string]UserRecord {
 	output := make(map[string]UserRecord)
 	var user UserRecord
@@ -240,7 +240,7 @@ func main() {
 	if os.Getenv("GENERATE_PASSWD") == "y" {
 		err := generatePasswd(bassPath+"/passwd", passwordPolicy, hidePassword)
 		if err != nil {
-			return
+			log.Panic(fmt.Errorf("failed to create passwd: %w", err))
 		}
 	}
 
