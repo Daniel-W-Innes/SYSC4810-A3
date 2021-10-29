@@ -29,7 +29,7 @@ type User struct {
 	password []byte
 }
 
-//Create a user structs from the nested arrays extracted from the passwd file.
+//arrayToUsers Create a user structs from the nested arrays extracted from the passwd file.
 func arrayToUsers(records [][]string) map[string]UserRecord {
 	output := make(map[string]UserRecord)
 	var user UserRecord
@@ -41,7 +41,7 @@ func arrayToUsers(records [][]string) map[string]UserRecord {
 	return output
 }
 
-//Open a CSV file, read its contents to nested arrays, then close it.
+//readCSV Open a CSV file, read its contents to nested arrays, then close it.
 func readCSV(fileName string) ([][]string, error) {
 	//Open the csv file
 	file, err := os.Open(fileName)
@@ -64,7 +64,7 @@ func readCSV(fileName string) ([][]string, error) {
 	return records, nil
 }
 
-//Get system users
+//getUsers Get system users
 func getUsers(passwordFile string) (map[string]UserRecord, error) {
 	//Get CSV file contents
 	records, err := readCSV(passwordFile)
@@ -75,7 +75,7 @@ func getUsers(passwordFile string) (map[string]UserRecord, error) {
 	return arrayToUsers(records), nil
 }
 
-//Get relationships between patients and doctors.
+//getPatients Get relationships between patients and doctors.
 //Formatted with the doctor userId as the key and an array of patient userIds as the value.
 func getPatients(patientsFile string) (map[string][]string, error) {
 	output := make(map[string][]string)
@@ -96,7 +96,7 @@ func getPatients(patientsFile string) (map[string][]string, error) {
 	return output, nil
 }
 
-//Get login credentials from user input
+//getCredentials Get login credentials from user input
 func getCredentials(hidePassword bool) (User, error) {
 	var username string
 	var password []byte
@@ -122,7 +122,7 @@ func getCredentials(hidePassword bool) (User, error) {
 	return User{username: username, password: password}, nil
 }
 
-//Generate passwd file formatted as a CSV from user input.
+//generatePasswd Generate passwd file formatted as a CSV from user input.
 func generatePasswd(passwordFile string, policy *strength.PasswordPolicy, hidePassword bool) error {
 	//Create empty password file
 	file, err := os.Create(passwordFile)
@@ -189,7 +189,7 @@ func generatePasswd(passwordFile string, policy *strength.PasswordPolicy, hidePa
 	return nil
 }
 
-//Prehash and encode the user inputted password
+//preHash and encode the user inputted password
 func preHash(password []byte) []byte {
 	//Setup to hash the password with the pepper key as the secret
 	hashedPassword := hmac.New(sha256.New, []byte(os.Getenv("PEPPER_KEY")))
@@ -198,7 +198,7 @@ func preHash(password []byte) []byte {
 	return []byte(base64.StdEncoding.EncodeToString(hashedPassword.Sum(nil)))
 }
 
-//Check the user inputted password against the password key.
+//checkPassword Check the user inputted password against the password key.
 //Return the user's record and true if the user successfully logged-in.
 func checkPassword(user User, users map[string]UserRecord) (UserRecord, bool) {
 	if record, ok := users[user.username]; ok {
@@ -210,7 +210,7 @@ func checkPassword(user User, users map[string]UserRecord) (UserRecord, bool) {
 	return UserRecord{}, false
 }
 
-//Generate password policy from information provided in assignment.
+//getPasswordPolicy Generate password policy from information provided in assignment.
 //This uses the strength module defined in the same repo.
 func getPasswordPolicy() *strength.PasswordPolicy {
 	//Load prohibited passwords from prohibitive password file

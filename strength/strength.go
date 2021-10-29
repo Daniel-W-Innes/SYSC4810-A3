@@ -12,7 +12,7 @@ import (
 // PasswordPolicy Class for checking passwords against predefined password policy
 type PasswordPolicy struct {
 	SubPolices  []SubPolicy
-	TempPolices []SubPolicy
+	TempPolices []SubPolicy //One time polices that are cleared after checking, e.g., not user's username
 }
 
 // SubPolicy Generic sub policy for one specific role of a password policy
@@ -160,6 +160,7 @@ type ProhibitedRegexesPolicy struct {
 	ProhibitedRegexes []*regexp.Regexp
 }
 
+// GetProhibitedRegexes Load regex password file into a sub policy
 func GetProhibitedRegexes(ProhibitedRegexesFile string) (*ProhibitedRegexesPolicy, error) {
 	prohibitedRegexesPolicy := ProhibitedRegexesPolicy{[]*regexp.Regexp{}}
 	file, err := os.Open(ProhibitedRegexesFile)
@@ -205,6 +206,8 @@ func runSubPolices(polices *[]SubPolicy, s string) error {
 	return nil
 }
 
+// Check All for the sub polices on a string
+// This clears the temp polices after check
 func (policy *PasswordPolicy) Check(s string) error {
 	err := runSubPolices(&(*policy).SubPolices, s)
 	if err != nil {
