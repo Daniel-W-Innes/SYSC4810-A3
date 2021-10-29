@@ -1,2 +1,5 @@
 /sensitive_files/
 /.idea/
+README
+run.sh
+Dockerfile
