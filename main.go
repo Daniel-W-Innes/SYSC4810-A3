@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const bcryptCost = 15
@@ -142,6 +143,10 @@ func generatePasswd(passwordFile string, policy *strength.PasswordPolicy, hidePa
 		if err != nil {
 			return err
 		}
+		if strings.ContainsRune(user.username, ',') {
+			fmt.Println("Username cannot contain ','")
+			continue
+		}
 		passwordKeyChan := make(chan []byte)
 		errorChan := make(chan error)
 		//Start hashing password concurrently, to main process
@@ -162,6 +167,10 @@ func generatePasswd(passwordFile string, policy *strength.PasswordPolicy, hidePa
 		_, err = fmt.Scanln(&role)
 		if err != nil {
 			return err
+		}
+		if strings.ContainsRune(role, ',') {
+			fmt.Println("Role cannot contain ','")
+			continue
 		}
 		//Get password hash from concurrent thread
 		passwordKey := <-passwordKeyChan

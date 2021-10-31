@@ -160,6 +160,15 @@ type ProhibitedRegexesPolicy struct {
 	ProhibitedRegexes []*regexp.Regexp
 }
 
+func (policy *ProhibitedRegexesPolicy) check(s string) error {
+	for _, regexes := range (*policy).ProhibitedRegexes {
+		if regexes.MatchString(s) {
+			return errors.New("prohibited pattern use password")
+		}
+	}
+	return nil
+}
+
 // GetProhibitedRegexes Load regex password file into a sub policy
 func GetProhibitedRegexes(ProhibitedRegexesFile string) (*ProhibitedRegexesPolicy, error) {
 	prohibitedRegexesPolicy := ProhibitedRegexesPolicy{[]*regexp.Regexp{}}
@@ -185,15 +194,6 @@ func GetProhibitedRegexes(ProhibitedRegexesFile string) (*ProhibitedRegexesPolic
 		return nil, err
 	}
 	return &prohibitedRegexesPolicy, nil
-}
-
-func (policy *ProhibitedRegexesPolicy) check(s string) error {
-	for _, regexes := range (*policy).ProhibitedRegexes {
-		if regexes.MatchString(s) {
-			return errors.New("prohibited pattern use password")
-		}
-	}
-	return nil
 }
 
 func runSubPolices(polices *[]SubPolicy, s string) error {
